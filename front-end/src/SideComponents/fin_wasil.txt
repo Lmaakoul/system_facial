@@ -1,4 +1,0 @@
-// file emploi les booton makhaminch
-
-// node v8 bash kikhdim projet . v20 makikhdimch biha bsbab open ssl 
- 

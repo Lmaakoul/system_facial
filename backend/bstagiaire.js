@@ -1,24 +1,29 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ObjectId } = require('mongodb');
+const MongoClient = require('mongodb').MongoClient;
+const logger = require('morgan');
 
 const app = express();
 const port = 5000;
 
-app.use(cors()); 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(logger('dev'));
+app.use(cors()); // Enable CORS for all routes
 
-const client = new MongoClient("mongodb://localhost:27017/", { useNewUrlParser: true, useUnifiedTopology: true });
+const mongoURI = 'mongodb://localhost:27017/';
+const dbName = 'system_facial';
+const collectionName = 'stagiaire';
 
-async function connectDatabase() {
-    try {
-        await client.connect();
-        console.log("Connected to MongoDB");
-    } catch (error) {
-        console.error("Failed to connect to MongoDB:", error);
-    }
-}
+let db, collection;
 
-connectDatabase();
+MongoClient.connect(mongoURI, { useUnifiedTopology: true })
+    .then(client => {
+        db = client.db(dbName);
+        collection = db.collection(collectionName);
+        console.log('Connected to MongoDB');
+    })
+    .catch(error => console.error('Error connecting to MongoDB:', error));
 
 app.get('/', (req, res) => {
     res.send('Welcome to the backend!');
@@ -26,30 +31,43 @@ app.get('/', (req, res) => {
 
 app.get('/stagiaire', async (req, res) => {
     try {
-        const db = client.db("system_facial");
-        const groupsCollection = db.collection("groups");
-        const inscriptionCollection = db.collection("inscription");
-        const stagiaireCollection = db.collection("stagiaire");
+        const { nom_groub } = req.query;
 
-        const groupName = req.query.groupName;
-        if (!groupName) {
-            return res.status(400).json({ error: "Group name is required" });
+        let query = {};
+        if (nom_groub) {
+            query.nom_groub = nom_groub;
         }
 
-        const group = await groupsCollection.findOne({ nom_groub: groupName });
-        if (!group) {
-            return res.status(404).json({ error: "Group not found" });
-        }
-
-        const inscriptionRecords = await inscriptionCollection.find({ id_group: group._id }).toArray();
-
-        const stagiaireIds = inscriptionRecords.map(record => record.id_stagaire);
-        const stagiaires = await stagiaireCollection.find({ _id: { $in: stagiaireIds.map(ObjectId) } }).toArray();
-
-        res.json(stagiaires);
+        const stagiaireList = await collection.find(query).toArray();
+        const formattedStagiaireList = stagiaireList.map(stagiaire => ({
+            _id: stagiaire._id.toString(),
+            nom: stagiaire.nom,
+            prenom: stagiaire.prenom,
+            date_naissance: stagiaire.date_naissance,
+            genre: stagiaire.genre,
+            nom_groub: stagiaire.nom_groub
+        }));
+        res.json(formattedStagiaireList);
     } catch (error) {
-        console.error("Error fetching stagiaires:", error);
-        res.status(500).json({ error: "Failed to fetch stagiaires" });
+        const errorMsg = `Error fetching stagiaires: ${error}`;
+        console.error(errorMsg);
+        res.status(500).json({ error: errorMsg });
+    }
+});
+
+app.get('/groups', async (req, res) => {
+    try {
+        const groupsCollection = db.collection('groub');
+        const groupsList = await groupsCollection.find().toArray();
+        const formattedGroupsList = groupsList.map(group => ({
+            _id: group._id.toString(),
+            nom_groub: group.nom_groub
+        }));
+        res.json(formattedGroupsList);
+    } catch (error) {
+        const errorMsg = `Error fetching groups: ${error}`;
+        console.error(errorMsg);
+        res.status(500).json({ error: errorMsg });
     }
 });
 

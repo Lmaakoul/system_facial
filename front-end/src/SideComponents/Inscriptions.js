@@ -1,212 +1,194 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import {
+  Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Paper, Select, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+} from '@mui/material';
+import './Stagiaire.css';
 
 const Inscriptions = () => {
-  const [inscriptions, setInscriptions] = useState([]);
-  const [groupId, setGroupId] = useState('');
-  const [year, setYear] = useState('');
-  const [stagiaire, setStagiaire] = useState('');
-  const [editId, setEditId] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [error, setError] = useState(null);
+  const [filterGroup, setFilterGroup] = useState('');
+  const [groups, setGroups] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [formData, setFormData] = useState({
+    nom: '',
+    prenom: '',
+    date_naissance: '',
+    genre: '',
+    nom_groub: '',
+  });
 
   useEffect(() => {
-    fetchInscriptions();
+    const fetchGroups = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/groups');
+        if (!response.ok) {
+          throw new Error('Failed to fetch groups');
+        }
+        const data = await response.json();
+        setGroups(data);
+      } catch (error) {
+        console.error('Error fetching groups:', error);
+      }
+    };
+
+    fetchGroups();
   }, []);
 
-  const fetchInscriptions = () => {
-    axios.get('http://localhost:5000/inscriptions')
-      .then(response => setInscriptions(response.data))
-      .catch(error => console.error('Error fetching inscriptions:', error));
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/stagiaire${filterGroup ? `?nom_groub=${filterGroup}` : ''}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch students');
+        }
+        const data = await response.json();
+        setStudents(data);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        setError(error.message);
+      }
+    };
+
+    fetchStudents();
+  }, [filterGroup]);
+
+  const handleFilterChange = (event) => {
+    setFilterGroup(event.target.value);
   };
 
-  const handleAddInscription = () => {
-    axios.post('http://localhost:5000/inscriptions', {
-      id_group: parseInt(groupId),
-      id_year: parseInt(year),
-      id_stagiaire: stagiaire
-    })
-      .then(response => {
-        fetchInscriptions(); // Refresh inscriptions after adding
-        setGroupId('');
-        setYear('');
-        setStagiaire('');
-      })
-      .catch(error => console.error('Error adding inscription:', error));
+  const handleAddStudent = () => {
+    setOpenDialog(true);
   };
 
-  const handleEditInscription = (id) => {
-    const inscription = inscriptions.find(inscription => inscription._id === id);
+  const handleEditStudent = (student) => {
+    setSelectedStudent(student);
+    setOpenDialog(true);
+  };
 
-    if (inscription) {
-      setGroupId(inscription.id_group.toString());
-      setYear(inscription.id_year.toString());
-      setStagiaire(inscription.id_stagiaire);
-      setEditId(id);
-      setOpenEditDialog(true);
-    } else {
-      console.error('Inscription not found for ID:', id);
+  const handleDeleteStudent = async (studentId) => {
+    try {
+      await fetch(`http://localhost:5000/stagiaire/${studentId}`, {
+        method: 'DELETE'
+      });
+      setStudents(students.filter(student => student._id !== studentId));
+    } catch (error) {
+      console.error('Error deleting student:', error);
     }
   };
 
-  const handleUpdateInscription = () => {
-    if (!editId) {
-      console.error("Edit ID is undefined");
-      return;
-    }
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedStudent(null);
+    setFormData({
+      nom: '',
+      prenom: '',
+      date_naissance: '',
+      genre: '',
+      nom_groub: '',
+    });
+  };
 
-    axios.put(`http://localhost:5000/inscriptions/${editId}`, {
-      id_group: parseInt(groupId),
-      id_year: parseInt(year),
-      id_stagiaire: stagiaire
-    })
-      .then(response => {
-        const updatedInscriptions = inscriptions.map(inscription => {
-          if (inscription._id === editId) {
-            return {
-              ...inscription,
-              id_group: parseInt(groupId),
-              id_year: parseInt(year),
-              id_stagiaire: stagiaire
-            };
-          }
-          return inscription;
+  const handleSubmitForm = async () => {
+    try {
+      if (selectedStudent) {
+        await fetch(`http://localhost:5000/stagiaire/${selectedStudent._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
         });
-        setInscriptions(updatedInscriptions);
-        setGroupId('');
-        setYear('');
-        setStagiaire('');
-        setEditId(null);
-        setOpenEditDialog(false);
-      })
-      .catch(error => console.error('Error updating inscription:', error));
+        const updatedStudents = students.map(student => {
+          if (student._id === selectedStudent._id) {
+            return { ...student, ...formData };
+          }
+          return student;
+        });
+        setStudents(updatedStudents);
+      } else {
+        const response = await fetch('http://localhost:5000/stagiaire', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+        const data = await response.json();
+        setStudents([...students, data]);
+      }
+      handleCloseDialog();
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    }
   };
 
-  const handleDeleteConfirmation = (id) => {
-    setDeleteId(id);
-    setOpenDeleteDialog(true);
-  };
-
-  const handleDeleteInscription = () => {
-    axios.delete(`http://localhost:5000/inscriptions/${deleteId}`)
-      .then(() => {
-        setInscriptions(inscriptions.filter(inscription => inscription._id !== deleteId));
-        setOpenDeleteDialog(false);
-        setDeleteId(null);
-      })
-      .catch(error => console.error('Error deleting inscription:', error));
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
   };
 
   return (
     <div>
-      <div>
-        <h1>Inscriptions List</h1>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Group ID</TableCell>
-                <TableCell>Year</TableCell>
-                <TableCell>Stagiaire</TableCell>
-                <TableCell>Actions</TableCell>
+      <Typography variant="h5" gutterBottom style={{ fontFamily: 'Arial', color: 'blue' }}>Stagiaire</Typography>
+      {error && <div>Error: {error}</div>}
+      <Select value={filterGroup} onChange={handleFilterChange} style={{ marginBottom: '20px', minWidth: '200px' }}>
+        <MenuItem value="">All Groups</MenuItem>
+        {groups.map(group => (
+          <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
+        ))}
+      </Select>
+      <Button onClick={handleAddStudent} variant="contained" color="primary" style={{ marginBottom: '20px' }}>Add Student</Button>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>Nom</TableCell>
+              <TableCell>Prénom</TableCell>
+              <TableCell>Date de Naissance</TableCell>
+              <TableCell>Genre</TableCell>
+              <TableCell>Nom Group</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {students.map(student => (
+              <TableRow key={student._id}>
+                <TableCell>{student._id}</TableCell>
+                <TableCell>{student.nom}</TableCell>
+                <TableCell>{student.prenom}</TableCell>
+                <TableCell>{new Date(student.date_naissance).toLocaleDateString()}</TableCell>
+                <TableCell>{student.genre}</TableCell>
+                <TableCell>{student.nom_groub}</TableCell>
+                <TableCell>
+                  <Button onClick={() => handleEditStudent(student)} color="primary">Edit</Button>
+                  <Button onClick={() => handleDeleteStudent(student._id)} color="secondary">Delete</Button>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {inscriptions.map(inscription => (
-                <TableRow key={inscription._id}>
-                  <TableCell>{inscription._id}</TableCell>
-                  <TableCell>{inscription.id_group}</TableCell>
-                  <TableCell>{inscription.id_year}</TableCell>
-                  <TableCell>{inscription.id_stagiaire}</TableCell>
-                  <TableCell>
-                    <Button variant="contained" color="primary" onClick={() => handleEditInscription(inscription._id)}>Edit</Button>
-                    <Button variant="contained" color="secondary" onClick={() => handleDeleteConfirmation(inscription._id)}>Delete</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </div>
-
-      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
-        <DialogTitle>Edit Inscription</DialogTitle>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>{selectedStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
         <DialogContent>
-          <TextField
-            label="Group ID"
-            variant="outlined"
-            value={groupId}
-            onChange={e => setGroupId(e.target.value)}
-            style={{ marginBottom: '10px' }}
-          />
-          <TextField
-            label="Year"
-            variant="outlined"
-            value={year}
-            onChange={e => setYear(e.target.value)}
-            style={{ marginBottom: '10px' }}
-          />
-          <TextField
-            label="Stagiaire"
-            variant="outlined"
-            value={stagiaire}
-            onChange={e => setStagiaire(e.target.value)}
-            style={{ marginBottom: '10px' }}
-          />
+          <TextField name="nom" label="Nom" value={formData.nom} onChange={handleChange} fullWidth margin="normal" />
+          <TextField name="prenom" label="Prénom" value={formData.prenom} onChange={handleChange} fullWidth margin="normal" />
+          <TextField name="date_naissance" label="Date de Naissance" value={formData.date_naissance} onChange={handleChange} fullWidth margin="normal" />
+          <TextField name="genre" label="Genre" value={formData.genre} onChange={handleChange} fullWidth margin="normal" />
+          <TextField name="nom_groub" label="Nom Group" value={formData.nom_groub} onChange={handleChange} fullWidth margin="normal" />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenEditDialog(false)} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleUpdateInscription} color="primary">
-            Update
-          </Button>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Save Changes' : 'Add Student'}</Button>
         </DialogActions>
       </Dialog>
-
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          Are you sure you want to delete this inscription?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleDeleteInscription} color="secondary">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <div>
-        <h2>Add Inscription</h2>
-        <TextField
-          label="Group ID"
-          variant="outlined"
-          value={groupId}
-          onChange={e => setGroupId(e.target.value)}
-          style={{ marginRight: '10px' }}
-        />
-        <TextField
-          label="Year"
-          variant="outlined"
-          value={year}
-          onChange={e => setYear(e.target.value)}
-          style={{ marginRight: '10px' }}
-        />
-        <TextField
-          label="Stagiaire"
-          variant="outlined"
-          value={stagiaire}
-          onChange={e => setStagiaire(e.target.value)}
-          style={{ marginRight: '10px' }}
-        />
-        <Button variant="contained" color="primary" onClick={handleAddInscription}>Add Inscription</Button>
-      </div>
     </div>
   );
 };

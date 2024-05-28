@@ -5,38 +5,57 @@ import './Stagiaire.css';
 const Stagiaire = () => {
   const [students, setStudents] = useState([]);
   const [error, setError] = useState(null);
-  const [filterGroup, setFilterGroup] = useState(''); 
+  const [filterGroup, setFilterGroup] = useState('');
+  const [groups, setGroups] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/stagiaire${filterGroup ? `?groupId=${filterGroup}` : ''}`)
-      .then(response => {
+    const fetchGroups = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/groups');
+        if (!response.ok) {
+          throw new Error('Failed to fetch groups');
+        }
+        const data = await response.json();
+        setGroups(data);
+      } catch (error) {
+        console.error('Error fetching groups:', error);
+      }
+    };
+
+    fetchGroups();
+  }, []);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/stagiaire${filterGroup ? `?nom_groub=${filterGroup}` : ''}`);
         if (!response.ok) {
           throw new Error('Failed to fetch students');
         }
-        return response.json();
-      })
-      .then(data => setStudents(data))
-      .catch(error => {
+        const data = await response.json();
+        setStudents(data);
+      } catch (error) {
         console.error('Error fetching students:', error);
         setError(error.message);
-      });
+      }
+    };
+
+    fetchStudents();
   }, [filterGroup]);
 
   const handleFilterChange = (event) => {
-    setFilterGroup(event.target.value); 
+    setFilterGroup(event.target.value);
   };
 
   return (
     <div>
       <Typography variant="h5" gutterBottom style={{ fontFamily: 'Arial', color: 'blue' }}>Stagiaire</Typography>
       {error && <div>Error: {error}</div>}
-      <Select value={filterGroup} onChange={handleFilterChange} style={{ marginBottom: '20px' }}>
+      <Select value={filterGroup} onChange={handleFilterChange} style={{ marginBottom: '20px', minWidth: '200px' }}>
         <MenuItem value="">All Groups</MenuItem>
-        <MenuItem value="Dev101">Dev101</MenuItem>
-        <MenuItem value="Info101">Info101</MenuItem>
-        <MenuItem value="El101">El101</MenuItem>
-        {}
-        <MenuItem value="OtherGroup">OtherGroup</MenuItem>
+        {groups.map(group => (
+          <MenuItem key={group.id} value={group.name}>{group.name}</MenuItem>
+        ))}
       </Select>
       <TableContainer component={Paper}>
         <Table>
@@ -47,6 +66,7 @@ const Stagiaire = () => {
               <TableCell>Prénom</TableCell>
               <TableCell>Date de Naissance</TableCell>
               <TableCell>Genre</TableCell>
+              <TableCell>Nom Group</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -57,6 +77,7 @@ const Stagiaire = () => {
                 <TableCell>{student.prenom}</TableCell>
                 <TableCell>{new Date(student.date_naissance).toLocaleDateString()}</TableCell>
                 <TableCell>{student.genre}</TableCell>
+                <TableCell>{student.nom_groub}</TableCell>
               </TableRow>
             ))}
           </TableBody>

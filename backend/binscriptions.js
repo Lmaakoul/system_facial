@@ -1,92 +1,76 @@
-// backend/server.js
 const express = require('express');
-const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
 const cors = require('cors');
+const MongoClient = require('mongodb').MongoClient;
+const logger = require('morgan');
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Use environment port or 5000
+const port = 5000;
 
-app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(logger('dev'));
+app.use(cors()); // Enable CORS for all routes
 
-// MongoDB Connection
-mongoose.connect('mongodb://localhost:27017/system_facial', { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.log(err));
+const mongoURI = 'mongodb://localhost:27017/';
+const dbName = 'system_facial';
+const collectionName = 'stagiaire';
 
-// Inscription Model
-const Inscription = mongoose.model('Inscription', {
-  id_group: Number,
-  id_year: Number,
-  id_stagiaire: String
+let db, collection;
+
+MongoClient.connect(mongoURI, { useUnifiedTopology: true })
+    .then(client => {
+        db = client.db(dbName);
+        collection = db.collection(collectionName);
+        console.log('Connected to MongoDB');
+    })
+    .catch(error => console.error('Error connecting to MongoDB:', error));
+
+app.get('/', (req, res) => {
+    res.send('Welcome to the backend!');
 });
 
-// Routes
-app.get('/inscriptions', async (req, res) => {
-  try {
-    const inscriptions = await Inscription.find();
-    res.status(200).json(inscriptions);
-  } catch (err) {
-    res.status(500).json({ msg: 'Error fetching inscriptions', error: err.message });
-  }
-});
+app.get('/stagiaire', async (req, res) => {
+    try {
+        const { nom_groub } = req.query;
 
-app.get('/inscriptions/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const inscription = await Inscription.findById(id);
-    if (!inscription) {
-      return res.status(404).json({ msg: 'Inscription not found' });
+        let query = {};
+        if (nom_groub) {
+            query.nom_groub = nom_groub;
+        }
+
+        const stagiaireList = await collection.find(query).toArray();
+        const formattedStagiaireList = stagiaireList.map(stagiaire => ({
+            _id: stagiaire._id.toString(),
+            nom: stagiaire.nom,
+            prenom: stagiaire.prenom,
+            date_naissance: stagiaire.date_naissance,
+            genre: stagiaire.genre,
+            nom_groub: stagiaire.nom_groub
+        }));
+        res.json(formattedStagiaireList);
+    } catch (error) {
+        const errorMsg = `Error fetching stagiaires: ${error}`;
+        console.error(errorMsg);
+        res.status(500).json({ error: errorMsg });
     }
-    res.status(200).json(inscription);
-  } catch (err) {
-    res.status(500).json({ msg: 'Error fetching inscription', error: err.message });
-  }
 });
 
-app.post('/inscriptions', async (req, res) => {
-  const { id_group, id_year, id_stagiaire } = req.body;
-  try {
-    const newInscription = new Inscription({ id_group, id_year, id_stagiaire });
-    await newInscription.save();
-    res.status(201).json(newInscription);
-  } catch (err) {
-    res.status(500).json({ msg: 'Error adding inscription', error: err.message });
-  }
-});
-
-app.put('/inscriptions/:id', async (req, res) => {
-  const { id } = req.params;
-  const { id_group, id_year, id_stagiaire } = req.body;
-  try {
-    const updatedInscription = await Inscription.findByIdAndUpdate(id,
-      { id_group, id_year, id_stagiaire },
-      { new: true }
-    );
-    if (!updatedInscription) {
-      return res.status(404).json({ msg: 'Inscription not found' });
+app.get('/groups', async (req, res) => {
+    try {
+        const groupsCollection = db.collection('groub');
+        const groupsList = await groupsCollection.find().toArray();
+        const formattedGroupsList = groupsList.map(group => ({
+            _id: group._id.toString(),
+            nom_groub: group.nom_groub
+        }));
+        res.json(formattedGroupsList);
+    } catch (error) {
+        const errorMsg = `Error fetching groups: ${error}`;
+        console.error(errorMsg);
+        res.status(500).json({ error: errorMsg });
     }
-    res.status(200).json(updatedInscription);
-  } catch (err) {
-    res.status(500).json({ msg: 'Error updating inscription', error: err.message });
-  }
 });
 
-app.delete('/inscriptions/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const deletedInscription = await Inscription.findByIdAndDelete(id);
-    if (!deletedInscription) {
-      return res.status(404).json({ msg: 'Inscription not found' });
-    }
-    res.status(200).json({ msg: 'Inscription deleted' });
-  } catch (err) {
-    res.status(500).json({ msg: 'Error deleting inscription', error: err.message });
-  }
-});
-
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });

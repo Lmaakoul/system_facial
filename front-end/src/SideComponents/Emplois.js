@@ -5,8 +5,6 @@ const Emplois = () => {
   const [emplois, setEmplois] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [updatedEmploiData, setUpdatedEmploiData] = useState(null);
-  const [newSessionData, setNewSessionData] = useState({}); // Define newSessionData
 
   useEffect(() => {
     const fetchEmplois = async () => {
@@ -30,14 +28,14 @@ const Emplois = () => {
 
   const handleEdit = async (id) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/emplois/${id}`, {
+      await fetch(`http://localhost:3000/api/emplois/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedEmploiData),
+        body: JSON.stringify({}), // Using empty object as placeholder
       });
-      // Handle response
+      // Handle response if needed
     } catch (error) {
       console.error('Error:', error);
     }
@@ -45,10 +43,10 @@ const Emplois = () => {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`http://localhost:3000/api/emplois/${id}`, {
+      await fetch(`http://localhost:3000/api/emplois/${id}`, {
         method: 'DELETE',
       });
-      // Handle response
+      // Handle response if needed
     } catch (error) {
       console.error('Error:', error);
     }
@@ -56,14 +54,14 @@ const Emplois = () => {
 
   const handleAddSession = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/emplois`, {
+      await fetch(`http://localhost:3000/api/emplois`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newSessionData), // Use newSessionData here
+        body: JSON.stringify({}), // Using empty object as placeholder
       });
-      // Handle response
+      // Handle response if needed
     } catch (error) {
       console.error('Error:', error);
     }

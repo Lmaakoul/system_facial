@@ -5,7 +5,6 @@ function Camera() {
   const [stream, setStream] = useState(null);
   const videoRef = useRef(null);
 
-  
   useEffect(() => {
     const getMediaStream = async () => {
       try {
@@ -23,7 +22,7 @@ function Camera() {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [stream]);
 
   useEffect(() => {
     if (videoRef.current && stream) {

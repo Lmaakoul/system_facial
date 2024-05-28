@@ -35,8 +35,8 @@ function Dashboard() {
             <img src={image} alt={`Slide ${index + 1}`} style={{ width: '100%' }} />
           </div>
         ))}
-        <a className="prev" onClick={() => setCurrentIndex((currentIndex - 1 + imagePaths.length) % imagePaths.length)}>&#10094;</a>
-        <a className="next" onClick={() => setCurrentIndex((currentIndex + 1) % imagePaths.length)}>&#10095;</a>
+        <button className="prev" onClick={() => setCurrentIndex((currentIndex - 1 + imagePaths.length) % imagePaths.length)}>&#10094;</button>
+        <button className="next" onClick={() => setCurrentIndex((currentIndex + 1) % imagePaths.length)}>&#10095;</button>
       </div>
 
       <style jsx>{`
@@ -52,13 +52,14 @@ function Dashboard() {
           cursor: pointer;
           position: absolute;
           top: 50%;
-          width: auto;
           padding: 16px;
           color: white;
           font-weight: bold;
           font-size: 18px;
           transition: 0.6s ease;
           user-select: none;
+          background: none;
+          border: none;
         }
         .next {
           right: 0;

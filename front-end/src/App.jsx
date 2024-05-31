@@ -20,11 +20,11 @@ import Dashboard from './Dashboard';
 function App() {
   return (
     <Router>
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh )' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar />
-        <div style={{ display: 'flex', marginTop: '30px', flex: 1 }}>
+        <div style={{ display: 'flex', flex: 1 }}>
           <Sidebar />
-          <div style={{ marginLeft: '200px', flex: 1, paddingTop: '30px' }}>
+          <div style={{  flex: 1, padding: '30px' }}>
             <Routes>
               <Route path="/camera" element={<Camera />} />
               <Route path="/analyse" element={<Analyse />} />
@@ -38,11 +38,10 @@ function App() {
               <Route path="/years" element={<Years />} />
               <Route path="/configuration" element={<Configuration />} />
               <Route path="/dashboard" element={<Dashboard />} />
-
             </Routes>
           </div>
         </div>
-        <Footer /> {/* Include Footer component at the bottom of the page */}
+        <Footer />
       </div>
     </Router>
   );

@@ -18,12 +18,13 @@ const Inscriptions = () => {
     date_naissance: '',
     genre: '',
     nom_groub: '',
+    image: null,
   });
 
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const response = await fetch('http://localhost:5000/groups');
+        const response = await fetch('http://localhost:5000/api/groups');
         if (!response.ok) {
           throw new Error('Failed to fetch groups');
         }
@@ -31,6 +32,7 @@ const Inscriptions = () => {
         setGroups(data);
       } catch (error) {
         console.error('Error fetching groups:', error);
+        setError(error.message);
       }
     };
 
@@ -88,18 +90,21 @@ const Inscriptions = () => {
       date_naissance: '',
       genre: '',
       nom_groub: '',
+      image: null,
     });
   };
 
   const handleSubmitForm = async () => {
     try {
+      const formDataWithFile = new FormData();
+      Object.keys(formData).forEach(key => {
+        formDataWithFile.append(key, formData[key]);
+      });
+
       if (selectedStudent) {
         await fetch(`http://localhost:5000/stagiaire/${selectedStudent._id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
+          body: formDataWithFile,
         });
         const updatedStudents = students.map(student => {
           if (student._id === selectedStudent._id) {
@@ -111,10 +116,7 @@ const Inscriptions = () => {
       } else {
         const response = await fetch('http://localhost:5000/stagiaire', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
+          body: formDataWithFile,
         });
         const data = await response.json();
         setStudents([...students, data]);
@@ -126,11 +128,18 @@ const Inscriptions = () => {
   };
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    const { name, value, files } = event.target;
+    if (name === 'image') {
+      setFormData({
+        ...formData,
+        image: files[0],
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   return (
@@ -148,27 +157,29 @@ const Inscriptions = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>ID</TableCell>
               <TableCell>Nom</TableCell>
               <TableCell>Prénom</TableCell>
               <TableCell>Date de Naissance</TableCell>
               <TableCell>Genre</TableCell>
               <TableCell>Nom Group</TableCell>
+              <TableCell>Image</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {students.map(student => (
               <TableRow key={student._id}>
-                <TableCell>{student._id}</TableCell>
                 <TableCell>{student.nom}</TableCell>
                 <TableCell>{student.prenom}</TableCell>
-                <TableCell>{new Date(student.date_naissance).toLocaleDateString()}</TableCell>
+                <TableCell>{student.date_naissance}</TableCell>
                 <TableCell>{student.genre}</TableCell>
                 <TableCell>{student.nom_groub}</TableCell>
                 <TableCell>
-                  <Button onClick={() => handleEditStudent(student)} color="primary">Edit</Button>
-                  <Button onClick={() => handleDeleteStudent(student._id)} color="secondary">Delete</Button>
+                  {student.imagePath && <img src={`http://localhost:5000/${student.imagePath}`} alt={student.nom} style={{ width: '50px', height: '50px' }} />}
+                </TableCell>
+                <TableCell>
+                  <Button onClick={() => handleEditStudent(student)} variant="contained" color="primary" style={{ marginRight: '10px' }}>Edit</Button>
+                  <Button onClick={() => handleDeleteStudent(student._id)} variant="contained" color="secondary">Delete</Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -178,15 +189,59 @@ const Inscriptions = () => {
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>{selectedStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
         <DialogContent>
-          <TextField name="nom" label="Nom" value={formData.nom} onChange={handleChange} fullWidth margin="normal" />
-          <TextField name="prenom" label="Prénom" value={formData.prenom} onChange={handleChange} fullWidth margin="normal" />
-          <TextField name="date_naissance" label="Date de Naissance" value={formData.date_naissance} onChange={handleChange} fullWidth margin="normal" />
-          <TextField name="genre" label="Genre" value={formData.genre} onChange={handleChange} fullWidth margin="normal" />
-          <TextField name="nom_groub" label="Nom Group" value={formData.nom_groub} onChange={handleChange} fullWidth margin="normal" />
+          <TextField
+            name="nom"
+            label="Nom"
+            value={formData.nom}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            name="prenom"
+            label="Prénom"
+            value={formData.prenom}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            name="date_naissance"
+            label="Date de Naissance"
+            type="date"
+            value={formData.date_naissance}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            name="genre"
+            label="Genre"
+            value={formData.genre}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            name="nom_groub"
+            label="Nom Group"
+            value={formData.nom_groub}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+          />
+          <input
+            type="file"
+            name="image"
+            accept="image/*"
+            onChange={handleChange}
+            style={{ marginTop: '20px' }}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Save Changes' : 'Add Student'}</Button>
+          <Button onClick={handleCloseDialog} color="primary">Cancel</Button>
+          <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Save' : 'Add'}</Button>
         </DialogActions>
       </Dialog>
     </div>

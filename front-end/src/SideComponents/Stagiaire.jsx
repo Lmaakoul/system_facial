@@ -11,7 +11,7 @@ const Stagiaire = () => {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const response = await fetch('http://localhost:5000/groups');
+        const response = await fetch('http://localhost:5000/api/groups');
         if (!response.ok) {
           throw new Error('Failed to fetch groups');
         }
@@ -19,6 +19,7 @@ const Stagiaire = () => {
         setGroups(data);
       } catch (error) {
         console.error('Error fetching groups:', error);
+        setError(error.message);
       }
     };
 
@@ -33,6 +34,7 @@ const Stagiaire = () => {
           throw new Error('Failed to fetch students');
         }
         const data = await response.json();
+        console.log('Students fetched from API:', data);
         setStudents(data);
       } catch (error) {
         console.error('Error fetching students:', error);
@@ -54,7 +56,7 @@ const Stagiaire = () => {
       <Select value={filterGroup} onChange={handleFilterChange} style={{ marginBottom: '20px', minWidth: '200px' }}>
         <MenuItem value="">All Groups</MenuItem>
         {groups.map(group => (
-          <MenuItem key={group.id} value={group.name}>{group.name}</MenuItem>
+          <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
         ))}
       </Select>
       <TableContainer component={Paper}>

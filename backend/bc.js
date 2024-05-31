@@ -1,51 +1,75 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const bodyParser = require('body-parser');
+const { v4: uuidv4 } = require('uuid'); // استيراد مكتبة UUID
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const port = 5000;
+
+app.use(cors());
+app.use(bodyParser.json());
 
 mongoose.connect('mongodb://localhost:27017/system_facial', {
   useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log("Connected to MongoDB");
-}).catch((err) => {
-  console.error("Error connecting to MongoDB:", err);
+  useUnifiedTopology: true,
+  useFindAndModify: false
 });
 
 const configurationSchema = new mongoose.Schema({
+  id: { type: String, default: uuidv4 }, // استخدام UUID للحقل id
   nom_configuration: String,
   value: String
 });
 
 const Configuration = mongoose.model('Configuration', configurationSchema);
 
-app.use(bodyParser.json());
-
-app.get('/api/configurations', async (req, res) => {
+// قراءة جميع الإعدادات
+app.get('/configurations', async (req, res) => {
   try {
-    const configurations = await Configuration.find();
-    res.json(configurations);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const configs = await Configuration.find();
+    res.json(configs);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
-app.post('/api/configurations', async (req, res) => {
-  const configuration = new Configuration({
-    nom_configuration: req.body.nom_configuration,
-    value: req.body.value
-  });
-
+// إنشاء إعداد جديد
+app.post('/configurations', async (req, res) => {
+  const config = new Configuration({ ...req.body, id: uuidv4() });
   try {
-    const newConfiguration = await configuration.save();
-    res.status(201).json(newConfiguration);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    const newConfig = await config.save();
+    res.status(201).json(newConfig);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// تحديث إعداد موجود
+app.put('/configurations/:id', async (req, res) => {
+  console.log('PUT /configurations/:id:', req.body); // Log the request body
+  try {
+    const updatedConfig = await Configuration.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
+    if (!updatedConfig) {
+      return res.status(404).json({ message: 'Configuration not found' });
+    }
+    res.json(updatedConfig);
+  } catch (error) {
+    console.error('Error updating configuration:', error); // Log the error
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// حذف إعداد
+app.delete('/configurations/:id', async (req, res) => {
+  try {
+    await Configuration.findOneAndDelete({ id: req.params.id });
+    res.json({ message: 'Deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });

@@ -13,14 +13,14 @@ app.use(cors()); // Enable CORS for all routes
 
 const mongoURI = 'mongodb://localhost:27017/';
 const dbName = 'system_facial';
-const collectionName = 'stagiaire';
+const stagiaireCollectionName = 'stagiaire';
 
-let db, collection;
+let db, stagiaireCollection;
 
 MongoClient.connect(mongoURI, { useUnifiedTopology: true })
     .then(client => {
         db = client.db(dbName);
-        collection = db.collection(collectionName);
+        stagiaireCollection = db.collection(stagiaireCollectionName);
         console.log('Connected to MongoDB');
     })
     .catch(error => console.error('Error connecting to MongoDB:', error));
@@ -32,13 +32,11 @@ app.get('/', (req, res) => {
 app.get('/stagiaire', async (req, res) => {
     try {
         const { nom_groub } = req.query;
-
         let query = {};
         if (nom_groub) {
             query.nom_groub = nom_groub;
         }
-
-        const stagiaireList = await collection.find(query).toArray();
+        const stagiaireList = await stagiaireCollection.find(query).toArray();
         const formattedStagiaireList = stagiaireList.map(stagiaire => ({
             _id: stagiaire._id.toString(),
             nom: stagiaire.nom,
@@ -55,15 +53,10 @@ app.get('/stagiaire', async (req, res) => {
     }
 });
 
-app.get('/groups', async (req, res) => {
+app.get('/api/groups', async (req, res) => {
     try {
-        const groupsCollection = db.collection('groub');
-        const groupsList = await groupsCollection.find().toArray();
-        const formattedGroupsList = groupsList.map(group => ({
-            _id: group._id.toString(),
-            nom_groub: group.nom_groub
-        }));
-        res.json(formattedGroupsList);
+        const groups = await stagiaireCollection.distinct('nom_groub');
+        res.json(groups.map(group => ({ nom_groub: group })));
     } catch (error) {
         const errorMsg = `Error fetching groups: ${error}`;
         console.error(errorMsg);

@@ -10,13 +10,10 @@
     <video id="videoElement" autoplay></video>
 
     <script>
-        // احصل على عنصر الفيديو
         var video = document.getElementById("videoElement");
 
-        // استدعاء عنصر الكاميرا المتصلة
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(function(stream) {
-                // تعيين تدفق الفيديو إلى العنصر الفيديو
                 video.srcObject = stream;
             })
             .catch(function(err) {

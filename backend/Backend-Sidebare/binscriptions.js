@@ -13,7 +13,8 @@ const storage = multer.diskStorage({
         cb(null, 'C:/Users/lenovo/OneDrive/Bureau/projet_1/code_face_recognation/student_images');
     },
     filename: (req, file, cb) => {
-        cb(null, `${Date.now()}_${file.originalname}`);
+        const { prenom, nom } = req.body;
+        cb(null, `${prenom}_${nom}${path.extname(file.originalname)}`);
     }
 });
 const upload = multer({ storage: storage });

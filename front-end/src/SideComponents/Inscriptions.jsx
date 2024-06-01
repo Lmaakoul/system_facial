@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Select, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  Paper, Select, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel
 } from '@mui/material';
+import { PhotoCamera } from '@mui/icons-material';
 import './Stagiaire.css';
 
 const Inscriptions = () => {
@@ -19,15 +20,14 @@ const Inscriptions = () => {
     genre: '',
     nom_groub: '',
     image: null,
+    face_encoding: ''
   });
 
   useEffect(() => {
     const fetchGroups = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/groups');
-        if (!response.ok) {
-          throw new Error('Failed to fetch groups');
-        }
+        if (!response.ok) throw new Error('Failed to fetch groups');
         const data = await response.json();
         setGroups(data);
       } catch (error) {
@@ -43,9 +43,7 @@ const Inscriptions = () => {
     const fetchStudents = async () => {
       try {
         const response = await fetch(`http://localhost:5000/stagiaire${filterGroup ? `?nom_groub=${filterGroup}` : ''}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch students');
-        }
+        if (!response.ok) throw new Error('Failed to fetch students');
         const data = await response.json();
         setStudents(data);
       } catch (error) {
@@ -67,6 +65,7 @@ const Inscriptions = () => {
 
   const handleEditStudent = (student) => {
     setSelectedStudent(student);
+    setFormData(student);
     setOpenDialog(true);
   };
 
@@ -91,6 +90,7 @@ const Inscriptions = () => {
       genre: '',
       nom_groub: '',
       image: null,
+      face_encoding: ''
     });
   };
 
@@ -142,16 +142,38 @@ const Inscriptions = () => {
     }
   };
 
+  const handleGenerateFaceEncoding = async () => {
+    try {
+      const formDataWithFile = new FormData();
+      formDataWithFile.append('image', formData.image);
+  
+      const response = await fetch('http://localhost:5000/api/face-encoding', {
+        method: 'POST',
+        body: formDataWithFile,
+      });
+  
+      if (!response.ok) throw new Error('Error generating face encoding');
+  
+      const data = await response.json();
+      setFormData({ ...formData, face_encoding: data.face_encoding });
+    } catch (error) {
+      console.error('Error generating face encoding:', error);
+    }
+  };
+  
   return (
     <div>
       <Typography variant="h5" gutterBottom style={{ fontFamily: 'Arial', color: 'blue' }}>Stagiaire</Typography>
       {error && <div>Error: {error}</div>}
-      <Select value={filterGroup} onChange={handleFilterChange} style={{ marginBottom: '20px', minWidth: '200px' }}>
-        <MenuItem value="">All Groups</MenuItem>
-        {groups.map(group => (
-          <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
-        ))}
-      </Select>
+      <FormControl variant="outlined" style={{ marginBottom: '20px', minWidth: '200px' }}>
+        <InputLabel>Group</InputLabel>
+        <Select value={filterGroup} onChange={handleFilterChange} label="Group">
+          <MenuItem value="">All Groups</MenuItem>
+          {groups.map(group => (
+            <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
       <Button onClick={handleAddStudent} variant="contained" color="primary" style={{ marginBottom: '20px' }}>Add Student</Button>
       <TableContainer component={Paper}>
         <Table>
@@ -163,6 +185,7 @@ const Inscriptions = () => {
               <TableCell>Genre</TableCell>
               <TableCell>Nom Group</TableCell>
               <TableCell>Image</TableCell>
+              <TableCell>Face Encoding</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -177,6 +200,7 @@ const Inscriptions = () => {
                 <TableCell>
                   {student.imagePath && <img src={`http://localhost:5000/${student.imagePath}`} alt={student.nom} style={{ width: '50px', height: '50px' }} />}
                 </TableCell>
+                <TableCell>{student.face_encoding}</TableCell>
                 <TableCell>
                   <Button onClick={() => handleEditStudent(student)} variant="contained" color="primary" style={{ marginRight: '10px' }}>Edit</Button>
                   <Button onClick={() => handleDeleteStudent(student._id)} variant="contained" color="secondary">Delete</Button>
@@ -189,59 +213,88 @@ const Inscriptions = () => {
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>{selectedStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
         <DialogContent>
-          <TextField
-            name="nom"
-            label="Nom"
-            value={formData.nom}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            name="prenom"
-            label="Prénom"
-            value={formData.prenom}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            name="date_naissance"
-            label="Date de Naissance"
-            type="date"
-            value={formData.date_naissance}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            name="genre"
-            label="Genre"
-            value={formData.genre}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            name="nom_groub"
-            label="Nom Group"
-            value={formData.nom_groub}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <input
-            type="file"
-            name="image"
-            accept="image/*"
-            onChange={handleChange}
-            style={{ marginTop: '20px' }}
-          />
+          <form>
+            <TextField
+              name="nom"
+              label="Nom"
+              value={formData.nom}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="prenom"
+              label="Prénom"
+              value={formData.prenom}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="date_naissance"
+              label="Date de Naissance"
+              type="date"
+              value={formData.date_naissance}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+              InputLabelProps={{ shrink: true }}
+            />
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Genre</InputLabel>
+              <Select
+                name="genre"
+                value={formData.genre}
+                onChange={handleChange}
+              >
+                <MenuItem value="male">Male</MenuItem>
+                <MenuItem value="female">Female</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Nom Group</InputLabel>
+              <Select
+                name="nom_groub"
+                value={formData.nom_groub}
+                onChange={handleChange}
+              >
+                {groups.map(group => (
+                  <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <input
+              accept="image/*"
+              style={{ display: 'none' }}
+              id="upload-image"
+              type="file"
+              name="image"
+              onChange={handleChange}
+            />
+            <label htmlFor="upload-image">
+              <Button
+                variant="contained"
+                color="primary"
+                component="span"
+                startIcon={<PhotoCamera />}
+                style={{ marginTop: '10px' }}
+              >
+                Upload Image
+              </Button>
+            </label>
+            <Button
+              onClick={handleGenerateFaceEncoding}
+              variant="contained"
+              color="secondary"
+              style={{ marginTop: '10px', marginLeft: '10px' }}
+            >
+              Generate Face Encoding
+            </Button>
+          </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">Cancel</Button>
-          <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Save' : 'Add'}</Button>
+          <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
+          <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Update' : 'Add'}</Button>
         </DialogActions>
       </Dialog>
     </div>

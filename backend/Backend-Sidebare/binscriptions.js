@@ -1,305 +1,153 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Select, MenuItem, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel
-} from '@mui/material';
-import { PhotoCamera } from '@mui/icons-material';
-import './Stagiaire.css';
+const express = require('express');
+const cors = require('cors');
+const { MongoClient, ObjectId } = require('mongodb');
+const logger = require('morgan');
+const multer = require('multer');
+const path = require('path');
+const { spawn } = require('child_process');
 
-const Inscriptions = () => {
-  const [students, setStudents] = useState([]);
-  const [error, setError] = useState(null);
-  const [filterGroup, setFilterGroup] = useState('');
-  const [groups, setGroups] = useState([]);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [formData, setFormData] = useState({
-    nom: '',
-    prenom: '',
-    date_naissance: '',
-    genre: '',
-    nom_groub: '',
-    image: null,
-    face_encoding: ''
-  });
+const app = express();
+const port = 5000;
 
-  useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/groups');
-        if (!response.ok) throw new Error('Failed to fetch groups');
-        const data = await response.json();
-        setGroups(data);
-      } catch (error) {
-        console.error('Error fetching groups:', error);
-        setError(error.message);
-      }
-    };
-
-    fetchGroups();
-  }, []);
-
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const response = await fetch(`http://localhost:5000/stagiaire${filterGroup ? `?nom_groub=${filterGroup}` : ''}`);
-        if (!response.ok) throw new Error('Failed to fetch students');
-        const data = await response.json();
-        setStudents(data);
-      } catch (error) {
-        console.error('Error fetching students:', error);
-        setError(error.message);
-      }
-    };
-
-    fetchStudents();
-  }, [filterGroup]);
-
-  const handleFilterChange = (event) => {
-    setFilterGroup(event.target.value);
-  };
-
-  const handleAddStudent = () => {
-    setOpenDialog(true);
-  };
-
-  const handleEditStudent = (student) => {
-    setSelectedStudent(student);
-    setFormData(student);
-    setOpenDialog(true);
-  };
-
-  const handleDeleteStudent = async (studentId) => {
-    try {
-      await fetch(`http://localhost:5000/stagiaire/${studentId}`, {
-        method: 'DELETE'
-      });
-      setStudents(students.filter(student => student._id !== studentId));
-    } catch (error) {
-      console.error('Error deleting student:', error);
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'C:/Users/lenovo/OneDrive/Bureau/projet_1/code_face_recognation/student_images');
+    },
+    filename: (req, file, cb) => {
+        const { prenom, nom } = req.body;
+        cb(null, `${prenom}_${nom}${path.extname(file.originalname)}`);
     }
-  };
+});
+const upload = multer({ storage: storage });
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setSelectedStudent(null);
-    setFormData({
-      nom: '',
-      prenom: '',
-      date_naissance: '',
-      genre: '',
-      nom_groub: '',
-      image: null,
-      face_encoding: ''
-    });
-  };
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(logger('dev'));
+app.use(cors());
 
-  const handleSubmitForm = async () => {
+const mongoURI = 'mongodb://localhost:27017/';
+const dbName = 'system_facial';
+const stagiaireCollectionName = 'stagiaire';
+
+let db, stagiaireCollection;
+
+MongoClient.connect(mongoURI, { useUnifiedTopology: true })
+    .then(client => {
+        db = client.db(dbName);
+        stagiaireCollection = db.collection(stagiaireCollectionName);
+        console.log('Connected to MongoDB');
+    })
+    .catch(error => console.error('Error connecting to MongoDB:', error));
+
+app.get('/', (req, res) => {
+    res.send('Welcome to the backend!');
+});
+
+app.get('/stagiaire', async (req, res) => {
     try {
-      const formDataWithFile = new FormData();
-      Object.keys(formData).forEach(key => {
-        formDataWithFile.append(key, formData[key]);
-      });
-
-      if (selectedStudent) {
-        await fetch(`http://localhost:5000/stagiaire/${selectedStudent._id}`, {
-          method: 'PUT',
-          body: formDataWithFile,
-        });
-        const updatedStudents = students.map(student => {
-          if (student._id === selectedStudent._id) {
-            return { ...student, ...formData };
-          }
-          return student;
-        });
-        setStudents(updatedStudents);
-      } else {
-        const response = await fetch('http://localhost:5000/stagiaire', {
-          method: 'POST',
-          body: formDataWithFile,
-        });
-        const data = await response.json();
-        setStudents([...students, data]);
-      }
-      handleCloseDialog();
-    } catch (error) {
-      console.error('Error submitting form:', error);
-    }
-  };
-
-  const handleChange = (event) => {
-    const { name, value, files } = event.target;
-    if (name === 'image') {
-      setFormData({
-        ...formData,
-        image: files[0],
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
-  };
-
-  const handleGenerateFaceEncoding = async (student) => {
-    try {
-      const formDataWithFile = new FormData();
-      formDataWithFile.append('image', student.image);
-
-      const response = await fetch('http://localhost:5000/api/face-encoding', {
-        method: 'POST',
-        body: formDataWithFile,
-      });
-
-      if (!response.ok) throw new Error('Error generating face encoding');
-
-      const data = await response.json();
-      const updatedStudents = students.map(s => {
-        if (s._id === student._id) {
-          return { ...s, face_encoding: data.face_encoding };
+        const { nom_groub } = req.query;
+        let query = {};
+        if (nom_groub) {
+            query.nom_groub = nom_groub;
         }
-        return s;
-      });
-      setStudents(updatedStudents);
+        const stagiaireList = await stagiaireCollection.find(query).toArray();
+        const formattedStagiaireList = stagiaireList.map(stagiaire => ({
+            _id: stagiaire._id.toString(),
+            nom: stagiaire.nom,
+            prenom: stagiaire.prenom,
+            date_naissance: stagiaire.date_naissance,
+            genre: stagiaire.genre,
+            nom_groub: stagiaire.nom_groub,
+            imagePath: stagiaire.imagePath,
+            face_encoding: stagiaire.face_encoding // Ensure this field is included
+        }));
+        res.json(formattedStagiaireList);
     } catch (error) {
-      console.error('Error generating face encoding:', error);
+        console.error('Error fetching stagiaires:', error);
+        res.status(500).json({ error: 'An error occurred' });
     }
-  };
+});
 
-  return (
-    <div>
-      <Typography variant="h5" gutterBottom style={{ fontFamily: 'Arial', color: 'blue' }}>Stagiaire</Typography>
-      {error && <div>Error: {error}</div>}
-      <FormControl variant="outlined" style={{ marginBottom: '20px', minWidth: '200px' }}>
-        <InputLabel>Group</InputLabel>
-        <Select value={filterGroup} onChange={handleFilterChange} label="Group">
-          <MenuItem value="">All Groups</MenuItem>
-          {groups.map(group => (
-            <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      <Button onClick={handleAddStudent} variant="contained" color="primary" style={{ marginBottom: '20px' }}>Add Student</Button>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nom</TableCell>
-              <TableCell>Prénom</TableCell>
-              <TableCell>Date de Naissance</TableCell>
-              <TableCell>Genre</TableCell>
-              <TableCell>Nom Group</TableCell>
-              <TableCell>Image</TableCell>
-              <TableCell>Face Encoding</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {students.map(student => (
-              <TableRow key={student._id}>
-                <TableCell>{student.nom}</TableCell>
-                <TableCell>{student.prenom}</TableCell>
-                <TableCell>{student.date_naissance}</TableCell>
-                <TableCell>{student.genre}</TableCell>
-                <TableCell>{student.nom_groub}</TableCell>
-                <TableCell>
-                  {student.imagePath && <img src={`http://localhost:5000/${student.imagePath}`} alt={student.nom} style={{ width: '50px', height: '50px' }} />}
-                </TableCell>
-                <TableCell>{student.face_encoding}</TableCell>
-                <TableCell>
-                  <Button onClick={() => handleEditStudent(student)} variant="contained" color="primary" style={{ marginRight: '10px' }}>Edit</Button>
-                  <Button onClick={() => handleDeleteStudent(student._id)} variant="contained" color="secondary">Delete</Button>
-                  {!student.face_encoding && (
-                    <Button
-                      onClick={() => handleGenerateFaceEncoding(student)}
-                      variant="contained"
-                      color="secondary"
-                      style={{ marginTop: '10px', marginLeft: '10px' }}
-                    >
-                      Generate Face Encoding
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>{selectedStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
-        <DialogContent>
-          <form>
-            <TextField
-              name="nom"
-              label="Nom"
-              value={formData.nom}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              name="prenom"
-              label="Prénom"
-              value={formData.prenom}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              name="date_naissance"
-              label="Date de Naissance"
-              type="date"
-              value={formData.date_naissance}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-              InputLabelProps={{
-                shrink: true,
-              }}
-            />
-            <TextField
-              name="genre"
-              label="Genre"
-              value={formData.genre}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Nom Group</InputLabel>
-              <Select
-                name="nom_groub"
-                value={formData.nom_groub}
-                onChange={handleChange}
-              >
-                {groups.map(group => (
-                  <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <input
-              accept="image/*"
-              style={{ display: 'none' }}
-              id="raised-button-file"
-              type="file"
-              name="image"
-              onChange={handleChange}
-            />
-            <label htmlFor="raised-button-file">
-              <Button variant="contained" color="primary" component="span" startIcon={<PhotoCamera />}>
-                Upload
-              </Button>
-            </label>
-          </form>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">Cancel</Button>
-          <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Update' : 'Add'}</Button>
-        </DialogActions>
-      </Dialog>
-    </div>
-  );
-};
+app.get('/api/groups', async (req, res) => {
+    try {
+        const groups = await stagiaireCollection.distinct('nom_groub');
+        res.json(groups.map(group => ({ nom_groub: group })));
+    } catch (error) {
+        console.error('Error fetching groups:', error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+});
 
-export default Inscriptions;
+app.post('/stagiaire', upload.single('image'), async (req, res) => {
+    try {
+        const { nom, prenom, date_naissance, genre, nom_groub } = req.body;
+        const imagePath = req.file ? req.file.path : null;
+        const newStudent = { nom, prenom, date_naissance, genre, nom_groub, imagePath, face_encoding: '' }; // Initialize face_encoding as empty
+
+        const result = await stagiaireCollection.insertOne(newStudent);
+        res.status(201).json({
+            _id: result.insertedId.toString(),
+            ...newStudent
+        });
+    } catch (error) {
+        console.error('Error adding student:', error);
+        res.status(500).json({ error: 'An error occurred' });
+    }
+});
+
+app.delete('/stagiaire/:id', async (req, res) => {
+    try {
+        const studentId = req.params.id;
+        const objectId = new ObjectId(studentId);
+
+        const result = await stagiaireCollection.deleteOne({ _id: objectId });
+
+        if (result.deletedCount === 1) {
+            res.status(200).json({ message: 'Student deleted successfully' });
+        } else {
+            res.status(404).json({ message: 'Student not found' });
+        }
+    } catch (error) {
+        console.error('Error occurred while deleting student:', error);
+        res.status(500).json({ error: 'An error occurred while deleting the student' });
+    }
+});
+
+app.post('/generate_face_encoding', async (req, res) => {
+    try {
+        const { imagePath } = req.body;
+        console.log('Starting face encoding for:', imagePath);
+
+        const pythonProcess = spawn('python', ['C:/Users/lenovo/OneDrive/Bureau/projet_1/face_encoding/face_encoding.py', imagePath]);
+
+        pythonProcess.stdout.on('data', (data) => {
+            const faceEncoding = data.toString().trim();
+            console.log('Face encoding received:', faceEncoding);
+            try {
+                const parsedEncoding = JSON.parse(faceEncoding);
+                res.json({ face_encoding: parsedEncoding });
+            } catch (jsonError) {
+                console.error('JSON parsing error:', jsonError);
+                res.status(500).json({ error: 'Error parsing face encoding data' });
+            }
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error('Error in Python process stderr:', data.toString());
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                console.error(`Python process exited with code ${code}`);
+                res.status(500).json({ error: 'An error occurred while generating face encoding' });
+            }
+        });
+    } catch (error) {
+        console.error('Error in /generate_face_encoding route:', error);
+        res.status(500).json({ error: 'An error occurred while generating face encoding' });
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});

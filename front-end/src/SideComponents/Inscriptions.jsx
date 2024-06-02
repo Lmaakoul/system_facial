@@ -98,7 +98,11 @@ const Inscriptions = () => {
     try {
       const formDataWithFile = new FormData();
       Object.keys(formData).forEach(key => {
-        formDataWithFile.append(key, formData[key]);
+        if (key === 'image' && formData[key]) {
+          formDataWithFile.append(key, formData[key]);
+        } else if (key !== 'image') {
+          formDataWithFile.append(key, formData[key]);
+        }
       });
 
       if (selectedStudent) {
@@ -142,25 +146,31 @@ const Inscriptions = () => {
     }
   };
 
-  const handleGenerateFaceEncoding = async () => {
+  const handleGenerateFaceEncoding = async (student) => {
     try {
-      const formDataWithFile = new FormData();
-      formDataWithFile.append('image', formData.image);
-  
-      const response = await fetch('http://localhost:5000/api/face-encoding', {
+      const response = await fetch('http://localhost:5000/generate_face_encoding', {
         method: 'POST',
-        body: formDataWithFile,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ imagePath: student.imagePath })
       });
-  
+
       if (!response.ok) throw new Error('Error generating face encoding');
-  
+
       const data = await response.json();
-      setFormData({ ...formData, face_encoding: data.face_encoding });
+      const updatedStudents = students.map(s => {
+        if (s._id === student._id) {
+          return { ...s, face_encoding: data.face_encoding };
+        }
+        return s;
+      });
+      setStudents(updatedStudents);
     } catch (error) {
       console.error('Error generating face encoding:', error);
     }
   };
-  
+
   return (
     <div>
       <Typography variant="h5" gutterBottom style={{ fontFamily: 'Arial', color: 'blue' }}>Stagiaire</Typography>
@@ -204,6 +214,16 @@ const Inscriptions = () => {
                 <TableCell>
                   <Button onClick={() => handleEditStudent(student)} variant="contained" color="primary" style={{ marginRight: '10px' }}>Edit</Button>
                   <Button onClick={() => handleDeleteStudent(student._id)} variant="contained" color="secondary">Delete</Button>
+                  {!student.face_encoding && (
+                    <Button
+                      onClick={() => handleGenerateFaceEncoding(student)}
+                      variant="contained"
+                      color="secondary"
+                      style={{ marginTop: '10px', marginLeft: '10px' }}
+                    >
+                      Generate Face Encoding
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -238,19 +258,18 @@ const Inscriptions = () => {
               onChange={handleChange}
               fullWidth
               margin="normal"
-              InputLabelProps={{ shrink: true }}
+              InputLabelProps={{
+                shrink: true,
+              }}
             />
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Genre</InputLabel>
-              <Select
-                name="genre"
-                value={formData.genre}
-                onChange={handleChange}
-              >
-                <MenuItem value="male">Male</MenuItem>
-                <MenuItem value="female">Female</MenuItem>
-              </Select>
-            </FormControl>
+            <TextField
+              name="genre"
+              label="Genre"
+              value={formData.genre}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
             <FormControl fullWidth margin="normal">
               <InputLabel>Nom Group</InputLabel>
               <Select
@@ -266,34 +285,20 @@ const Inscriptions = () => {
             <input
               accept="image/*"
               style={{ display: 'none' }}
-              id="upload-image"
+              id="raised-button-file"
               type="file"
               name="image"
               onChange={handleChange}
             />
-            <label htmlFor="upload-image">
-              <Button
-                variant="contained"
-                color="primary"
-                component="span"
-                startIcon={<PhotoCamera />}
-                style={{ marginTop: '10px' }}
-              >
-                Upload Image
+            <label htmlFor="raised-button-file">
+              <Button variant="contained" color="primary" component="span" startIcon={<PhotoCamera />}>
+                Upload
               </Button>
             </label>
-            <Button
-              onClick={handleGenerateFaceEncoding}
-              variant="contained"
-              color="secondary"
-              style={{ marginTop: '10px', marginLeft: '10px' }}
-            >
-              Generate Face Encoding
-            </Button>
           </form>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} color="secondary">Cancel</Button>
+          <Button onClick={handleCloseDialog} color="primary">Cancel</Button>
           <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Update' : 'Add'}</Button>
         </DialogActions>
       </Dialog>

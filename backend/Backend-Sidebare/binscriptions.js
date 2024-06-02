@@ -115,17 +115,30 @@ app.delete('/stagiaire/:id', async (req, res) => {
 
 app.post('/generate_face_encoding', async (req, res) => {
     try {
-        const { imagePath } = req.body;
+        const { imagePath, studentId } = req.body; // Ensure studentId is sent in the request
         console.log('Starting face encoding for:', imagePath);
 
         const pythonProcess = spawn('python', ['C:/Users/lenovo/OneDrive/Bureau/projet_1/face_encoding/face_encoding.py', imagePath]);
 
-        pythonProcess.stdout.on('data', (data) => {
+        pythonProcess.stdout.on('data', async (data) => {
             const faceEncoding = data.toString().trim();
             console.log('Face encoding received:', faceEncoding);
             try {
                 const parsedEncoding = JSON.parse(faceEncoding);
-                res.json({ face_encoding: parsedEncoding });
+                // Update the student document with the new face encoding
+                const objectId = new ObjectId(studentId);
+                const updateResult = await stagiaireCollection.updateOne(
+                    { _id: objectId },
+                    { $set: { face_encoding: parsedEncoding } }
+                );
+
+                if (updateResult.modifiedCount === 1) {
+                    console.log('Successfully updated student face encoding');
+                    res.json({ face_encoding: parsedEncoding });
+                } else {
+                    console.error('Failed to update student face encoding');
+                    res.status(500).json({ error: 'Failed to update student face encoding' });
+                }
             } catch (jsonError) {
                 console.error('JSON parsing error:', jsonError);
                 res.status(500).json({ error: 'Error parsing face encoding data' });

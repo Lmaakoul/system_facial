@@ -4,6 +4,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 const logger = require('morgan');
 const multer = require('multer');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const app = express();
 const port = 5000;
@@ -22,7 +23,7 @@ const upload = multer({ storage: storage });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger('dev'));
-app.use(cors()); // Enable CORS for all routes
+app.use(cors());
 
 const mongoURI = 'mongodb://localhost:27017/';
 const dbName = 'system_facial';
@@ -58,12 +59,12 @@ app.get('/stagiaire', async (req, res) => {
             genre: stagiaire.genre,
             nom_groub: stagiaire.nom_groub,
             imagePath: stagiaire.imagePath,
+            face_encoding: stagiaire.face_encoding // Ensure this field is included
         }));
         res.json(formattedStagiaireList);
     } catch (error) {
-        const errorMsg = `Error fetching stagiaires: ${error}`;
-        console.error(errorMsg);
-        res.status(500).json({ error: errorMsg });
+        console.error('Error fetching stagiaires:', error);
+        res.status(500).json({ error: 'An error occurred' });
     }
 });
 
@@ -72,18 +73,16 @@ app.get('/api/groups', async (req, res) => {
         const groups = await stagiaireCollection.distinct('nom_groub');
         res.json(groups.map(group => ({ nom_groub: group })));
     } catch (error) {
-        const errorMsg = `Error fetching groups: ${error}`;
-        console.error(errorMsg);
-        res.status(500).json({ error: errorMsg });
+        console.error('Error fetching groups:', error);
+        res.status(500).json({ error: 'An error occurred' });
     }
 });
 
-// مسار POST لإضافة طالب جديد مع صورة
 app.post('/stagiaire', upload.single('image'), async (req, res) => {
     try {
         const { nom, prenom, date_naissance, genre, nom_groub } = req.body;
         const imagePath = req.file ? req.file.path : null;
-        const newStudent = { nom, prenom, date_naissance, genre, nom_groub, imagePath };
+        const newStudent = { nom, prenom, date_naissance, genre, nom_groub, imagePath, face_encoding: '' }; // Initialize face_encoding as empty
 
         const result = await stagiaireCollection.insertOne(newStudent);
         res.status(201).json({
@@ -91,23 +90,17 @@ app.post('/stagiaire', upload.single('image'), async (req, res) => {
             ...newStudent
         });
     } catch (error) {
-        const errorMsg = `Error adding student: ${error}`;
-        console.error(errorMsg);
-        res.status(500).json({ error: errorMsg });
+        console.error('Error adding student:', error);
+        res.status(500).json({ error: 'An error occurred' });
     }
 });
 
-// مسار DELETE لحذف طالب باستخدام المعرف
 app.delete('/stagiaire/:id', async (req, res) => {
     try {
         const studentId = req.params.id;
-        console.log('Received request to delete student with ID:', studentId);
-
-        const objectId = new ObjectId(studentId);  // استخدام ObjectId بشكل صحيح
-        console.log('Converted ObjectId:', objectId);
+        const objectId = new ObjectId(studentId);
 
         const result = await stagiaireCollection.deleteOne({ _id: objectId });
-        console.log('Delete result:', result);
 
         if (result.deletedCount === 1) {
             res.status(200).json({ message: 'Student deleted successfully' });
@@ -117,6 +110,41 @@ app.delete('/stagiaire/:id', async (req, res) => {
     } catch (error) {
         console.error('Error occurred while deleting student:', error);
         res.status(500).json({ error: 'An error occurred while deleting the student' });
+    }
+});
+
+app.post('/generate_face_encoding', async (req, res) => {
+    try {
+        const { imagePath } = req.body;
+        console.log('Starting face encoding for:', imagePath);
+
+        const pythonProcess = spawn('python', ['C:/Users/lenovo/OneDrive/Bureau/projet_1/face_encoding/face_encoding.py', imagePath]);
+
+        pythonProcess.stdout.on('data', (data) => {
+            const faceEncoding = data.toString().trim();
+            console.log('Face encoding received:', faceEncoding);
+            try {
+                const parsedEncoding = JSON.parse(faceEncoding);
+                res.json({ face_encoding: parsedEncoding });
+            } catch (jsonError) {
+                console.error('JSON parsing error:', jsonError);
+                res.status(500).json({ error: 'Error parsing face encoding data' });
+            }
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error('Error in Python process stderr:', data.toString());
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                console.error(`Python process exited with code ${code}`);
+                res.status(500).json({ error: 'An error occurred while generating face encoding' });
+            }
+        });
+    } catch (error) {
+        console.error('Error in /generate_face_encoding route:', error);
+        res.status(500).json({ error: 'An error occurred while generating face encoding' });
     }
 });
 

@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
-const PORT = 5000;
+const PORT = 5002;
 
 app.use(cors());
 app.use(express.json());
@@ -16,34 +16,62 @@ mongoose.connect('mongodb://localhost:27017/system_facial', {
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 db.once('open', () => {
-  console.log('good connect ');
+  console.log('Connected to MongoDB');
 
   const groupSchema = new mongoose.Schema({
-// data likijib hna 
-
     _id: Number,
-    name: String
+    id_group: Number,
+    nom_group: String
   });
 
-  // Define Model
   const Group = mongoose.model('Group', groupSchema);
 
-  // Route to get Group data
+  // Route to get all groups
   app.get('/api/groups', async (req, res) => {
     try {
-      console.log('Received GET request to /api/groups');
-
-      // ki9ilib 3la data et sent request
       const groups = await Group.find();
-      console.log('Retrieved groups:', groups);
       res.json(groups);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: '  error serveur' });
+      res.status(500).json({ message: 'Internal Server Error' });
     }
   });
-// serveur khdam bi3dma dar connect m3a database.
+
+  // Route to add a new group
+  app.post('/api/groups', async (req, res) => {
+    try {
+      const { id_group, nom_group } = req.body;
+      const newGroup = new Group({ _id: id_group, id_group, nom_group });
+      await newGroup.save();
+      res.status(201).json(newGroup);
+    } catch (err) {
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+
+  // Route to delete a group
+  app.delete('/api/groups/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await Group.deleteOne({ _id: id });
+      res.status(204).send();
+    } catch (err) {
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+
+  // Route to update a group
+  app.put('/api/groups/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { nom_group } = req.body;
+      const updatedGroup = await Group.findByIdAndUpdate(id, { nom_group }, { new: true });
+      res.json(updatedGroup);
+    } catch (err) {
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  });
+
   app.listen(PORT, () => {
-    console.log(`   serveur khdam ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
   });
 });

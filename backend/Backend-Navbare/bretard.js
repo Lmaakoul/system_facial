@@ -1,8 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors'); // Importing cors
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5006; // Updated port to 5006
 
 mongoose.connect('mongodb://localhost:27017/system_facial', {
   useNewUrlParser: true,
@@ -25,6 +26,7 @@ const retardSchema = new mongoose.Schema({
 
 const Retard = mongoose.model('Retard', retardSchema);
 
+app.use(cors()); // Enabling CORS for all requests
 app.use(express.json()); // Middleware to parse request body as JSON
 
 // Route to get all retard data

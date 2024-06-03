@@ -20,7 +20,7 @@ function Retard() {
   const [editData, setEditData] = useState({});
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteItemId, setDeleteItemId] = useState(null); 
+  const [deleteItemId, setDeleteItemId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -28,7 +28,7 @@ function Retard() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/retards');
+      const response = await axios.get('http://localhost:5006/retards'); // Updated to port 5006
       setRetardData(response.data);
     } catch (error) {
       console.error('Error fetching retard data:', error);
@@ -55,9 +55,9 @@ function Retard() {
 
   const handleSaveEdit = async () => {
     try {
-      await axios.put(`http://localhost:3000/retards/${editData._id}`, editData);
+      await axios.put(`http://localhost:5006/retards/${editData._id}`, editData); // Updated to port 5006
       setIsEditModalOpen(false);
-      fetchData(); 
+      fetchData(); // Refresh data after saving edit
     } catch (error) {
       console.error('Error saving edit:', error);
     }
@@ -65,9 +65,9 @@ function Retard() {
 
   const handleConfirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:3000/retards/${deleteItemId}`);
+      await axios.delete(`http://localhost:5006/retards/${deleteItemId}`); // Updated to port 5006
       setIsDeleteModalOpen(false);
-      fetchData(); 
+      fetchData(); // Refresh data after deleting
     } catch (error) {
       console.error('Error deleting item:', error);
     }
@@ -109,6 +109,7 @@ function Retard() {
         </Table>
       </TableContainer>
 
+      {/* Edit Modal */}
       <Modal
         open={isEditModalOpen}
         onClose={handleCloseEditModal}
@@ -156,6 +157,7 @@ function Retard() {
         </Box>
       </Modal>
 
+      {/* Delete Modal */}
       <Modal
         open={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}

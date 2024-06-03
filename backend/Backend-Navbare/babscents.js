@@ -1,55 +1,79 @@
-import React, { useState } from 'react';
-import { XYPlot, VerticalBarSeries, XAxis, YAxis, VerticalGridLines, HorizontalGridLines, Hint } from 'react-vis';
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
 
-const Analyse = () => {
-  const [hintValue, setHintValue] = useState(null);
-  const [selectedData, setSelectedData] = useState(null);
+const app = express();
+const PORT = process.env.PORT || 5005;
 
-  const data = [
-    { x: 'Monday', y: 8 },
-    { x: 'Tuesday', y: 6 },
-    { x: 'Wednesday', y: 7 },
-    { x: 'Thursday', y: 5 },
-    { x: 'Friday', y: 4 },
-    { x: 'Saturday', y: 2 },
-    { x: 'Sunday', y: 3 }
-  ];
+app.use(cors());  // Enable CORS
+app.use(express.json());
 
-  const handleBarClick = (datapoint) => {
-    setSelectedData(datapoint);
-  };
+mongoose.connect('mongodb://localhost:27017/system_facial', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('Connected to MongoDB');
+}).catch((error) => {
+  console.error('Error connecting to MongoDB:', error);
+});
 
-  return (
-    <div>
-      <h2>Analyse</h2>
-      <XYPlot
-        xType="ordinal"
-        width={600}
-        height={400}
-        xDistance={100}
-        onMouseLeave={() => setHintValue(null)}
-      >
-        <VerticalGridLines />
-        <HorizontalGridLines />
-        <XAxis />
-        <YAxis />
-        <VerticalBarSeries
-          data={data}
-          onValueMouseOver={datapoint => setHintValue(datapoint)}
-          onValueClick={handleBarClick}
-          color="#007bff"
-        />
-        {hintValue && <Hint value={hintValue} />}
-      </XYPlot>
-      {selectedData && (
-        <div style={{ marginTop: '20px', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}>
-          <h3>Details</h3>
-          <p><strong>Day:</strong> {selectedData.x}</p>
-          <p><strong>Hours:</strong> {selectedData.y}</p>
-        </div>
-      )}
-    </div>
-  );
-};
+const abscentsSchema = new mongoose.Schema({
+  nom: String,
+  prenom: String,
+  id_inscription: Number,
+  id_emploi: Number,
+  date: String,
+  time: String,
+  status: String
+});
 
-export default Analyse;
+const abscents = mongoose.model('abscents', abscentsSchema);
+
+app.get('/abscents', async (req, res) => {
+  try {
+    const abscentsData = await abscents.find();
+    res.json(abscentsData);
+  } catch (error) {
+    console.error('Error accessing abscents data:', error);
+    res.status(500).json({ error: 'Error accessing abscents data' });
+  }
+});
+
+app.put('/abscents/:id', async (req, res) => {
+  const id = req.params.id;
+  const newData = req.body;
+
+  try {
+    const updatedAbscents = await abscents.findByIdAndUpdate(id, newData, { new: true });
+
+    if (!updatedAbscents) {
+      return res.status(404).json({ error: 'Abscents data not found' });
+    }
+
+    res.json(updatedAbscents);
+  } catch (error) {
+    console.error('Error updating abscents data:', error);
+    res.status(500).json({ error: 'Error updating abscents data' });
+  }
+});
+
+app.delete('/abscents/:id', async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const deletedAbscents = await abscents.findByIdAndDelete(id);
+
+    if (!deletedAbscents) {
+      return res.status(404).json({ error: 'Abscents data not found' });
+    }
+
+    res.json({ message: 'Abscents data deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting abscents data:', error);
+    res.status(500).json({ error: 'Error deleting abscents data' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

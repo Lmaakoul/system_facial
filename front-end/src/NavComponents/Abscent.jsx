@@ -28,7 +28,7 @@ function Abscent() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/abscents');
+      const response = await axios.get('http://localhost:5005/abscents');
       setAbscentData(response.data);
     } catch (error) {
       console.error('Error fetching abscent data:', error);
@@ -55,7 +55,7 @@ function Abscent() {
 
   const handleSaveEdit = async () => {
     try {
-      await axios.put(`http://localhost:3000/abscents/${editData._id}`, editData);
+      await axios.put(`http://localhost:5005/abscents/${editData._id}`, editData);
       setIsEditModalOpen(false);
       fetchData(); // Refresh data after saving edit
     } catch (error) {
@@ -65,7 +65,7 @@ function Abscent() {
 
   const handleConfirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:3000/abscents/${deleteItemId}`);
+      await axios.delete(`http://localhost:5005/abscents/${deleteItemId}`);
       setIsDeleteModalOpen(false);
       fetchData(); // Refresh data after deleting
     } catch (error) {

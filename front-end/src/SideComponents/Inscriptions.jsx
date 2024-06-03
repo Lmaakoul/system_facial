@@ -233,75 +233,74 @@ const Inscriptions = () => {
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>{selectedStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
         <DialogContent>
-  <form>
-    <TextField
-      name="nom"
-      label="Nom"
-      value={formData.nom}
-      onChange={handleChange}
-      fullWidth
-      margin="normal"
-    />
-    <TextField
-      name="prenom"
-      label="Prénom"
-      value={formData.prenom}
-      onChange={handleChange}
-      fullWidth
-      margin="normal"
-    />
-    <TextField
-      name="date_naissance"
-      label="Date de Naissance"
-      type="date"
-      value={formData.date_naissance}
-      onChange={handleChange}
-      fullWidth
-      margin="normal"
-      InputLabelProps={{
-        shrink: true,
-      }}
-    />
-    <FormControl fullWidth margin="normal">
-      <InputLabel>Genre</InputLabel>
-      <Select
-        name="genre"
-        value={formData.genre}
-        onChange={handleChange}
-      >
-        <MenuItem value="Male">Male</MenuItem>
-        <MenuItem value="Female">Female</MenuItem>
-        <MenuItem value="Other">Other</MenuItem>
-      </Select>
-    </FormControl>
-    <FormControl fullWidth margin="normal">
-      <InputLabel>Nom Group</InputLabel>
-      <Select
-        name="nom_groub"
-        value={formData.nom_groub}
-        onChange={handleChange}
-      >
-        {groups.map(group => (
-          <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-    <input
-      accept="image/*"
-      style={{ display: 'none' }}
-      id="raised-button-file"
-      type="file"
-      name="image"
-      onChange={handleChange}
-    />
-    <label htmlFor="raised-button-file">
-      <Button variant="contained" color="primary" component="span" startIcon={<PhotoCamera />}>
-        Upload
-      </Button>
-    </label>
-  </form>
-</DialogContent>
-
+          <form>
+            <TextField
+              name="nom"
+              label="Nom"
+              value={formData.nom}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="prenom"
+              label="Prénom"
+              value={formData.prenom}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="date_naissance"
+              label="Date de Naissance"
+              type="date"
+              value={formData.date_naissance}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Genre</InputLabel>
+              <Select
+                name="genre"
+                value={formData.genre}
+                onChange={handleChange}
+              >
+                <MenuItem value="Male">Male</MenuItem>
+                <MenuItem value="Female">Female</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Nom Group</InputLabel>
+              <Select
+                name="nom_groub"
+                value={formData.nom_groub}
+                onChange={handleChange}
+              >
+                {groups.map(group => (
+                  <MenuItem key={group.nom_groub} value={group.nom_groub}>{group.nom_groub}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <input
+              accept="image/*"
+              style={{ display: 'none' }}
+              id="raised-button-file"
+              type="file"
+              name="image"
+              onChange={handleChange}
+            />
+            <label htmlFor="raised-button-file">
+              <Button variant="contained" color="primary" component="span" startIcon={<PhotoCamera />}>
+                Upload
+              </Button>
+            </label>
+          </form>
+        </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="primary">Cancel</Button>
           <Button onClick={handleSubmitForm} color="primary">{selectedStudent ? 'Update' : 'Add'}</Button>

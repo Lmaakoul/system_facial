@@ -28,13 +28,15 @@ app.use(cors());
 const mongoURI = 'mongodb://localhost:27017/';
 const dbName = 'system_facial';
 const stagiaireCollectionName = 'stagiaire';
+const groupsCollectionName = 'groups';
 
-let db, stagiaireCollection;
+let db, stagiaireCollection, groupsCollection;
 
 MongoClient.connect(mongoURI, { useUnifiedTopology: true })
     .then(client => {
         db = client.db(dbName);
         stagiaireCollection = db.collection(stagiaireCollectionName);
+        groupsCollection = db.collection(groupsCollectionName);
         console.log('Connected to MongoDB');
     })
     .catch(error => console.error('Error connecting to MongoDB:', error));
@@ -78,11 +80,20 @@ app.get('/api/groups', async (req, res) => {
     }
 });
 
+
 app.post('/stagiaire', upload.single('image'), async (req, res) => {
     try {
         const { nom, prenom, date_naissance, genre, nom_groub } = req.body;
         const imagePath = req.file ? req.file.path : null;
-        const newStudent = { nom, prenom, date_naissance, genre, nom_groub, imagePath, face_encoding: '' }; // Initialize face_encoding as empty
+
+        // Find the id_group based on nom_groub
+        const group = await groupsCollection.findOne({ nom_group: nom_groub });
+        if (!group) {
+            return res.status(400).json({ error: 'Group not found' });
+        }
+        const id_group = group.id_group;
+
+        const newStudent = { nom, prenom, date_naissance, genre, nom_groub, id_group, imagePath, face_encoding: '' }; // Include id_group
 
         const result = await stagiaireCollection.insertOne(newStudent);
         res.status(201).json({

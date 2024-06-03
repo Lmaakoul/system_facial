@@ -29,14 +29,16 @@ const mongoURI = 'mongodb://localhost:27017/';
 const dbName = 'system_facial';
 const stagiaireCollectionName = 'stagiaire';
 const groupsCollectionName = 'groups';
+const inscriptionsCollectionName = 'inscriptions';
 
-let db, stagiaireCollection, groupsCollection;
+let db, stagiaireCollection, groupsCollection, inscriptionsCollection;
 
 MongoClient.connect(mongoURI, { useUnifiedTopology: true })
     .then(client => {
         db = client.db(dbName);
         stagiaireCollection = db.collection(stagiaireCollectionName);
         groupsCollection = db.collection(groupsCollectionName);
+        inscriptionsCollection = db.collection(inscriptionsCollectionName);
         console.log('Connected to MongoDB');
     })
     .catch(error => console.error('Error connecting to MongoDB:', error));
@@ -80,10 +82,9 @@ app.get('/api/groups', async (req, res) => {
     }
 });
 
-
 app.post('/stagiaire', upload.single('image'), async (req, res) => {
     try {
-        const { nom, prenom, date_naissance, genre, nom_groub } = req.body;
+        const { nom, prenom, date_naissance, genre, nom_groub, id_year } = req.body;
         const imagePath = req.file ? req.file.path : null;
 
         // Find the id_group based on nom_groub
@@ -93,9 +94,17 @@ app.post('/stagiaire', upload.single('image'), async (req, res) => {
         }
         const id_group = group.id_group;
 
-        const newStudent = { nom, prenom, date_naissance, genre, nom_groub, id_group, imagePath, face_encoding: '' }; // Include id_group
+        // Find the highest id_stagiaire and increment it by 1
+        const lastStagiaire = await stagiaireCollection.find().sort({ id_stagiaire: -1 }).limit(1).toArray();
+        const newIdStagiaire = lastStagiaire.length > 0 ? lastStagiaire[0].id_stagiaire + 1 : 1;
 
+        const newStudent = { nom, prenom, date_naissance, genre, nom_groub, id_group, imagePath, face_encoding: '', id_stagiaire: newIdStagiaire };
         const result = await stagiaireCollection.insertOne(newStudent);
+
+        // Save the information in the inscriptions collection
+        const newInscription = { id_group, id_year, id_stagiaire: newIdStagiaire };
+        await inscriptionsCollection.insertOne(newInscription);
+
         res.status(201).json({
             _id: result.insertedId.toString(),
             ...newStudent
@@ -111,10 +120,16 @@ app.delete('/stagiaire/:id', async (req, res) => {
         const studentId = req.params.id;
         const objectId = new ObjectId(studentId);
 
+        const student = await stagiaireCollection.findOne({ _id: objectId });
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
         const result = await stagiaireCollection.deleteOne({ _id: objectId });
 
         if (result.deletedCount === 1) {
-            res.status(200).json({ message: 'Student deleted successfully' });
+            await inscriptionsCollection.deleteMany({ id_stagiaire: student.id_stagiaire });
+            res.status(200).json({ message: 'Student and related inscriptions deleted successfully' });
         } else {
             res.status(404).json({ message: 'Student not found' });
         }

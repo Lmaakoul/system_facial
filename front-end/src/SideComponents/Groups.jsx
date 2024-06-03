@@ -12,7 +12,7 @@ const Groups = () => {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/groups');
+      const response = await fetch('http://localhost:5002/api/groups');
       if (!response.ok) {
         throw new Error('Failed to fetch groups');
       }
@@ -25,12 +25,12 @@ const Groups = () => {
 
   const handleAddGroup = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/groups', {
+      const response = await fetch('http://localhost:5002/api/groups', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ nom_groub: newGroup }),
+        body: JSON.stringify({ id_group: groups.length + 1, nom_group: newGroup }), // Ensure id_group is set
       });
       if (!response.ok) {
         throw new Error('Failed to add group');
@@ -44,7 +44,7 @@ const Groups = () => {
 
   const handleDeleteGroup = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${id}`, {
+      const response = await fetch(`http://localhost:5002/api/groups/${id}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -62,12 +62,12 @@ const Groups = () => {
 
   const handleUpdateGroup = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${selectedGroup._id}`, {
+      const response = await fetch(`http://localhost:5002/api/groups/${selectedGroup._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(selectedGroup),
+        body: JSON.stringify({ nom_group: selectedGroup.nom_group }), // Use correct field name
       });
       if (!response.ok) {
         throw new Error('Failed to update group');
@@ -93,8 +93,8 @@ const Groups = () => {
           <TableBody>
             {groups.map((group) => (
               <TableRow key={group._id}>
-                <TableCell>{group._id}</TableCell>
-                <TableCell>{group.nom_groub}</TableCell>
+                <TableCell>{group.id_group}</TableCell>
+                <TableCell>{group.nom_group}</TableCell> {/* Use correct field name */}
                 <TableCell>
                   <Button onClick={() => handleDeleteGroup(group._id)} variant="outlined" color="error">Delete</Button>
                   <Button onClick={() => handleSelectGroup(group)} variant="outlined" color="primary">Edit</Button>
@@ -113,8 +113,8 @@ const Groups = () => {
           <h3>Edit Group</h3>
           <TextField
             label="Group Name"
-            value={selectedGroup.nom_groub}
-            onChange={(e) => setSelectedGroup({ ...selectedGroup, nom_groub: e.target.value })}
+            value={selectedGroup.nom_group} // Use correct field name
+            onChange={(e) => setSelectedGroup({ ...selectedGroup, nom_group: e.target.value })} // Use correct field name
           />
           <Button onClick={handleUpdateGroup} variant="contained" color="primary">Save</Button>
         </div>
